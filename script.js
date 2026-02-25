@@ -77,36 +77,43 @@ function stopFocus() {
 async function askAI() {
     const input = document.getElementById('ai-in');
     const resBox = document.getElementById('ai-res');
-    if (!input.value.trim()) return;
+    if (!input || !input.value.trim()) return;
 
     const query = input.value;
     input.value = "";
-    resBox.innerHTML = "[ ACCESSING KNOWLEDGE BASE... ]";
+    resBox.innerHTML = "[ ACCESSING GITHUB MODELS... ]";
 
     try {
+        // We use the direct endpoint. Ensure GH_TOKEN has no "Bearer" prefix in the variable itself.
         const response = await fetch('https://models.inference.ai.azure.com/chat/completions', {
             method: 'POST',
+            // No custom headers other than these two, to keep Safari happy
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GH_TOKEN}`
+                'Authorization': 'Bearer ' + GH_TOKEN.trim()
             },
             body: JSON.stringify({
                 messages: [
-                    { role: "system", content: "You are Kruthik's personal AI researcher for Class 11. Be concise, use LaTeX for math, and prioritize Physics/Math laws." },
+                    { role: "system", content: "You are a concise Class 11 Physics tutor." },
                     { role: "user", content: query }
                 ],
                 model: "gpt-4o"
             })
         });
 
+        // Check if Safari blocked the response
+        if (!response.ok) {
+            const errorBody = await response.json();
+            resBox.innerHTML = `[GATEWAY REJECTED]: ${errorBody.error?.message || response.status}`;
+            return;
+        }
+
         const data = await response.json();
         resBox.innerHTML = data.choices[0].message.content.replace(/\n/g, '<br>');
+
     } catch (e) {
-        resBox.innerHTML = "[ UPLINK ERROR: Check Token/Shields ]";
+        // If it hits here, it's a browser-level block
+        resBox.innerHTML = "[CONNECTION REFUSED: Check Safari/Network Settings]";
+        console.error("Uplink failed:", e);
     }
 }
-
-function copyAI() {
-    navigator.clipboard.writeText(document.getElementById('ai-res').innerText);
-}
-
